@@ -92,17 +92,31 @@ public:
 
 class MacroCommand : public Command {
 public:
-	MacroCommand() {}
+	MacroCommand() { 
+		vector<Command*> ch;
+		commandHistory.push_back(ch);
+	}
 	virtual ~MacroCommand() {}
 	vector<Command*> commands;
-	vector<vector<Command*>> commandHistory; // true = add; false = remove
+	vector<vector<Command*>> commandHistory;
+	
 	//list<list<Command*>>::iterator historyIt;
 	vector<vector<Command*>>::iterator it;
+	int iter;
 	virtual void add(Command *c)
 	{
 		commands.push_back(c);
+
+		/*vector<Command*>::iterator i;
+		for (i = commands.begin(); i != commands.end(); ++i)
+		{
+			Command *c = *i;
+			c->execute();
+		}*/
+
 		commandHistory.push_back(commands);
-		it = commandHistory.end() - 1;
+		iter = commandHistory.size() - 1;
+		it = commandHistory.end();
 	}
 	virtual void remove(Command *c)
 	{
@@ -112,7 +126,8 @@ public:
 			commands.erase(i);
 		}
 		commandHistory.push_back(commands);
-		it = commandHistory.end() - 1;
+		iter = commandHistory.size() - 1;
+		it = commandHistory.end();
 	}
 	virtual void undo()
 	{
@@ -120,7 +135,7 @@ public:
 		{
 			if (it != commandHistory.begin())
 			{
-				it--;
+				--it;
 			}
 			commands = *it;
 			
@@ -137,14 +152,14 @@ public:
 	{
 		if (!commandHistory.empty())
 		{
-			if (it != commandHistory.end())
+			if (it != commandHistory.end() - 1)
 			{
 				++it;
 			}
 			commands = *it;
 
 			vector<Command*>::iterator i;
-			for (i = commands.begin(); i != commands.end() - 1; ++i)
+			for (i = commands.begin(); i != commands.end(); ++i)
 			{
 				Command *c = *i;
 				c->execute();
@@ -210,6 +225,27 @@ public:
 		if (GetAsyncKeyState(0x57) < 0) // W-key
 		{
 			buttonW->execute();
+		}
+
+		if (GetAsyncKeyState(0x26) < 0) // Up-key
+		{
+			buttonUp->execute();
+		}
+		if (GetAsyncKeyState(0x28) < 0) // Down-key
+		{
+			buttonDown->execute();
+		}
+		if (GetAsyncKeyState(0x25) < 0) // Left-key
+		{
+			buttonLeft->execute();
+		}
+		if (GetAsyncKeyState(0x27) < 0) // Right-key
+		{
+			buttonRight->execute();
+		}
+		if (GetAsyncKeyState(0x20) < 0) // Space-key
+		{
+			buttonSpace->execute();
 		}
 	}
 	void Mapping()
@@ -361,6 +397,8 @@ public:
 			mc.execute();
 			mc.commands.clear();
 			mc.commandHistory.clear();
+			vector<Command*> ch;
+			mc.commandHistory.push_back(ch);
 			Return();
 		}
 		if (GetAsyncKeyState(0x08)) // Backspace-key
