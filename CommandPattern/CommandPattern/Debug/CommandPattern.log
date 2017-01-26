@@ -1,3 +1,7 @@
 ﻿  main.cpp
-  CommandPattern.vcxproj -> C:\Users\gameuser\Desktop\Command Pattern\CommandPattern\Debug\CommandPattern.exe
-  CommandPattern.vcxproj -> C:\Users\gameuser\Desktop\Command Pattern\CommandPattern\Debug\CommandPattern.pdb (Full PDB)
+c:\users\tomas\desktop\commandpattern\commandpattern\command.h(233): warning C4018: '<': signed/unsigned mismatch
+c:\users\tomas\desktop\commandpattern\commandpattern\command.h(264): warning C4018: '<': signed/unsigned mismatch
+c:\users\tomas\desktop\commandpattern\commandpattern\command.h(275): warning C4018: '<': signed/unsigned mismatch
+c:\users\tomas\desktop\commandpattern\commandpattern\command.h(296): warning C4018: '<': signed/unsigned mismatch
+  CommandPattern.vcxproj -> C:\Users\Tomas\Desktop\CommandPattern\Debug\CommandPattern.exe
+  CommandPattern.vcxproj -> C:\Users\Tomas\Desktop\CommandPattern\Debug\CommandPattern.pdb (Full PDB)

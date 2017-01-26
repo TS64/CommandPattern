@@ -2,8 +2,10 @@
 #include "Windows.h"
 #include <conio.h>
 #include <list>
+#include <string>
 #include <vector>
 #include <iostream>
+#include <typeinfo>
 
 using namespace std;
 
@@ -14,6 +16,7 @@ public:
 	virtual void execute() = 0;
 	virtual void undo() = 0;
 	virtual void redo() = 0;
+	vector<Command*> commands;
 protected:
 	Command() {}
 };
@@ -92,42 +95,41 @@ public:
 
 class MacroCommand : public Command {
 public:
-	MacroCommand() { 
-		vector<Command*> ch;
-		commandHistory.push_back(ch);
+	MacroCommand()
+	{
+		resetHistory();
+	}
+	void resetHistory()
+	{
+		vector<Command*> empty;
+		commandHistory.clear();
+		commandHistory.push_back(empty);
 	}
 	virtual ~MacroCommand() {}
-	vector<Command*> commands;
 	vector<vector<Command*>> commandHistory;
-	
-	//list<list<Command*>>::iterator historyIt;
 	vector<vector<Command*>>::iterator it;
-	int iter;
+
 	virtual void add(Command *c)
 	{
 		commands.push_back(c);
-
-		/*vector<Command*>::iterator i;
-		for (i = commands.begin(); i != commands.end(); ++i)
-		{
-			Command *c = *i;
-			c->execute();
-		}*/
-
 		commandHistory.push_back(commands);
-		iter = commandHistory.size() - 1;
-		it = commandHistory.end();
+		it = commandHistory.end() - 1;
 	}
 	virtual void remove(Command *c)
 	{
-		auto i = find(commands.begin(), commands.end(), c);
-		if (i != commands.end())
+		vector<Command*>::iterator i = commands.begin();
+		while (i != commands.end())
 		{
-			commands.erase(i);
+			i = find(commands.begin(), commands.end(), c);
+			if (i != commands.end())
+			{
+				commands.erase(i);
+				i = commands.begin();
+			}
 		}
+		
 		commandHistory.push_back(commands);
-		iter = commandHistory.size() - 1;
-		it = commandHistory.end();
+		it = commandHistory.end() - 1;
 	}
 	virtual void undo()
 	{
@@ -135,7 +137,7 @@ public:
 		{
 			if (it != commandHistory.begin())
 			{
-				--it;
+				it--;
 			}
 			commands = *it;
 			
@@ -146,7 +148,6 @@ public:
 				c->execute();
 			}
 		}
-		
 	}
 	virtual void redo()
 	{
@@ -180,213 +181,60 @@ public:
 class InputHandler
 {
 public:
+	InputHandler()
+	{
+		buttons = 
+		{
+			buttonA, buttonS, buttonD, buttonW,
+			buttonLeft, buttonUp, buttonRight, buttonDown,
+			buttonSpace
+		};
+
+		defaultButtons =
+		{
+			defaultButtonA, defaultButtonS, defaultButtonD, defaultButtonW,
+			defaultButtonLeft, defaultButtonUp, defaultButtonRight, defaultButtonDown,
+			defaultButtonSpace
+		};
+	}
+	vector<int> keys = 
+	{
+		0x41, 0x53, 0x44, 0x57, // A, S, D, W
+		0x25, 0x26, 0x27, 0x28, // Left, Up, Right, Down
+		0x20					// Space
+	};
+	vector<Command*> buttons;
+	vector<Command*> defaultButtons;
+	vector<string> keyNames =
+	{
+		"A", "S", "D", "W",
+		"LEFT", "UP", "RIGHT", "DOWN",
+		"SPACE"
+	};
+	
 	bool running = true;
-	bool waiting = true;
-	bool mapping = false;
-	bool remapping = false;
-	bool macroCommands = false;
-	bool keyIsPressed = true;
-	bool removing = false;
-	MacroCommand mc;
+	MacroCommand* mc = new MacroCommand();
 	char mapKey;
+
+	int keySelected;
 
 	void Return()
 	{
-		remapping = false;
-		waiting = true;
-		std::cout << "Macro commands = 0; Map Buttons = 1; Exit = Esc" << std::endl;
+		menu = WAITING;
+		std::cout << "Macro commands = 0; Exit = Esc" << std::endl;
 	}
 	void Waiting()
 	{
 		if (GetAsyncKeyState(0x30) < 0) // 0-key
 		{
 			std::cout << "Enter macros. Finish = Enter; Undo = X; Redo = Y; Remove = Backspace" << std::endl;
-			macroCommands = true;
-			waiting = false;
+			menu = ENTER_MACROS;
 		}
-		if (GetAsyncKeyState(0x31) < 0) // 1-key
+		for (int i = 0; i < keys.size(); i++)
 		{
-			std::cout << "Enter key you want to re-map:" << std::endl;
-			mapping = true;
-			waiting = false;
-		}
-		if (GetAsyncKeyState(0x41) < 0) // A-key
-		{
-			buttonA->execute();
-		}
-		if (GetAsyncKeyState(0x53) < 0) // S-key
-		{
-			buttonS->execute();
-		}
-		if (GetAsyncKeyState(0x44) < 0) // D-key
-		{
-			buttonD->execute();
-		}
-		if (GetAsyncKeyState(0x57) < 0) // W-key
-		{
-			buttonW->execute();
-		}
-
-		if (GetAsyncKeyState(0x26) < 0) // Up-key
-		{
-			buttonUp->execute();
-		}
-		if (GetAsyncKeyState(0x28) < 0) // Down-key
-		{
-			buttonDown->execute();
-		}
-		if (GetAsyncKeyState(0x25) < 0) // Left-key
-		{
-			buttonLeft->execute();
-		}
-		if (GetAsyncKeyState(0x27) < 0) // Right-key
-		{
-			buttonRight->execute();
-		}
-		if (GetAsyncKeyState(0x20) < 0) // Space-key
-		{
-			buttonSpace->execute();
-		}
-	}
-	void Mapping()
-	{
-		if (GetAsyncKeyState(0x41) < 0) // A-key
-		{
-			mapKey = 'a';
-			std::cout << "Re-map 'A' to which key?" << std::endl;
-			mapping = false;
-			remapping = true;
-		}
-		if (GetAsyncKeyState(0x53) < 0) // S-key
-		{
-			mapKey = 's';
-			std::cout << "Re-map 'S' to which key?" << std::endl;
-			mapping = false;
-			remapping = true;
-		}
-		if (GetAsyncKeyState(0x44) < 0) // D-key
-		{
-			mapKey = 'd';
-			std::cout << "Re-map 'D' to which key?" << std::endl;
-			mapping = false;
-			remapping = true;
-		}
-		if (GetAsyncKeyState(0x57) < 0) // W-key
-		{
-			mapKey = 'w';
-			std::cout << "Re-map 'W' to which key?" << std::endl;
-			mapping = false;
-			remapping = true;
-		}
-	}
-	void Remapping()
-	{
-		if (GetAsyncKeyState(0x41) < 0) // A-key
-		{
-			if (mapKey == 'a')
+			if (GetAsyncKeyState(keys[i]) < 0)
 			{
-				buttonA = new ACommand();
-				std::cout << "Remapping 'A' to 'A'" << std::endl;
-				Return();
-			}
-			if (mapKey == 's')
-			{
-				buttonS = new ACommand();
-				std::cout << "Remapping 'S' to 'A'" << std::endl;
-				Return();
-			}
-			if (mapKey == 'd')
-			{
-				buttonD = new ACommand();
-				std::cout << "Remapping 'D' to 'A'" << std::endl;
-				Return();
-			}
-			if (mapKey == 'w')
-			{
-				buttonW = new ACommand();
-				std::cout << "Remapping 'W' to 'A'" << std::endl;
-				Return();
-			}
-		}
-		if (GetAsyncKeyState(0x53) < 0) // S-key
-		{
-			if (mapKey == 'a')
-			{
-				buttonA = new SCommand();
-				std::cout << "Remapping 'A' to 'S'" << std::endl;
-				Return();
-			}
-			if (mapKey == 's')
-			{
-				buttonS = new SCommand();
-				std::cout << "Remapping 'S' to 'S'" << std::endl;
-				Return();
-			}
-			if (mapKey == 'd')
-			{
-				buttonD = new SCommand();
-				std::cout << "Remapping 'D' to 'S'" << std::endl;
-				Return();
-			}
-			if (mapKey == 'w')
-			{
-				buttonW = new SCommand();
-				std::cout << "Remapping 'W' to 'S'" << std::endl;
-				Return();
-			}
-		}
-		if (GetAsyncKeyState(0x44) < 0) // D-key
-		{
-			if (mapKey == 'a')
-			{
-				buttonA = new DCommand();
-				std::cout << "Remapping 'A' to 'D'" << std::endl;
-				Return();
-			}
-			if (mapKey == 's')
-			{
-				buttonS = new DCommand();
-				std::cout << "Remapping 'S' to 'D'" << std::endl;
-				Return();
-			}
-			if (mapKey == 'd')
-			{
-				buttonD = new DCommand();
-				std::cout << "Remapping 'D' to 'D'" << std::endl;
-				Return();
-			}
-			if (mapKey == 'w')
-			{
-				buttonW = new DCommand();
-				std::cout << "Remapping 'W' to 'D'" << std::endl;
-				Return();
-			}
-		}
-		if (GetAsyncKeyState(0x57) < 0) // W-key
-		{
-			if (mapKey == 'a')
-			{
-				buttonA = new WCommand();
-				std::cout << "Remapping 'A' to 'W'" << std::endl;
-				Return();
-			}
-			if (mapKey == 's')
-			{
-				buttonS = new WCommand();
-				std::cout << "Remapping 'S' to 'W'" << std::endl;
-				Return();
-			}
-			if (mapKey == 'd')
-			{
-				buttonD = new WCommand();
-				std::cout << "Remapping 'D' to 'W'" << std::endl;
-				Return();
-			}
-			if (mapKey == 'w')
-			{
-				buttonW = new WCommand();
-				std::cout << "Remapping 'W' to 'W'" << std::endl;
-				Return();
+				buttons[i]->execute();
 			}
 		}
 	}
@@ -394,142 +242,65 @@ public:
 	{
 		if (GetAsyncKeyState(0x0D)) // Enter-key
 		{
-			mc.execute();
-			mc.commands.clear();
-			mc.commandHistory.clear();
-			vector<Command*> ch;
-			mc.commandHistory.push_back(ch);
-			Return();
+			mc->execute();
+			cout << "Map this macro to a key? Press the key to map or Enter to skip" << endl;
+			menu = MAP_MACROS;
 		}
 		if (GetAsyncKeyState(0x08)) // Backspace-key
 		{
 			std::cout << "Remove which commands" << std::endl;
-			removing = true;
+			menu = REMOVING;
 		}
-
 		if (GetAsyncKeyState(0x58)) // X-key
 		{
-			mc.undo();
+			mc->undo();
 			std::cout << "Undo" << std::endl;
 		}
 		if (GetAsyncKeyState(0x59)) // Y-key
 		{
-			mc.redo();
+			mc->redo();
 			std::cout << "Redo" << std::endl;
 		}
+		for (int i = 0; i < keys.size(); i++)
+		{
+			if (GetAsyncKeyState(keys[i]) < 0)
+			{
+				mc->add(defaultButtons[i]);
+				std::cout << "Added " << keyNames[i] << std::endl;
+			}
+		}
+	}
+	void MapMacros()
+	{
+		for (int i = 0; i < keys.size(); i++)
+		{
+			if (GetAsyncKeyState(keys[i]) < 0)
+			{
+				buttons[i] = new MacroCommand();
+				buttons[i]->commands = mc->commands;
+				mc->commands.clear();
+				mc->resetHistory();
+				Return();
+			}
+		}
 
-		if (GetAsyncKeyState(0x41) < 0) // A-key
+		if (GetAsyncKeyState(0x0D) < 0) // Enter-key
 		{
-			mc.add(buttonA);
-			std::cout << "Added A" << std::endl;
-		}
-		if (GetAsyncKeyState(0x53) < 0) // S-key
-		{
-			mc.add(buttonS);
-			std::cout << "Added S" << std::endl;
-		}
-		if (GetAsyncKeyState(0x44) < 0) // D-key
-		{
-			mc.add(buttonD);
-			std::cout << "Added D" << std::endl;
-		}
-		if (GetAsyncKeyState(0x57) < 0) // W-key
-		{
-			mc.add(buttonW);
-			std::cout << "Added W" << std::endl;
-		}
-
-		if (GetAsyncKeyState(0x26) < 0) // Up-key
-		{
-			mc.add(buttonUp);
-			std::cout << "Added UP" << std::endl;
-		}
-		if (GetAsyncKeyState(0x28) < 0) // Down-key
-		{
-			mc.add(buttonDown);
-			std::cout << "Added DOWN" << std::endl;
-		}
-		if (GetAsyncKeyState(0x25) < 0) // Left-key
-		{
-			mc.add(buttonLeft);
-			std::cout << "Added LEFT" << std::endl;
-		}
-		if (GetAsyncKeyState(0x27) < 0) // Right-key
-		{
-			mc.add(buttonRight);
-			std::cout << "Added RIGHT" << std::endl;
-		}
-		if (GetAsyncKeyState(0x20) < 0) // Space-key
-		{
-			mc.add(buttonSpace);
-			std::cout << "Added SPACE" << std::endl;
+			mc->commands.clear();
+			mc->resetHistory();
+			Return();
 		}
 	}
 	void Remove()
 	{
-		if (GetAsyncKeyState(0x41) < 0) // A-key
+		for (int r = 0; r < keys.size(); r++)
 		{
-			mc.remove(buttonA);
-			removing = false;
-			macroCommands = true;
-			std::cout << "Remove A" << std::endl;
-		}
-		if (GetAsyncKeyState(0x53) < 0) // S-key
-		{
-			mc.remove(buttonS);
-			removing = false;
-			macroCommands = true;
-			std::cout << "Remove S" << std::endl;
-		}
-		if (GetAsyncKeyState(0x44) < 0) // D-key
-		{
-			mc.remove(buttonD);
-			removing = false;
-			macroCommands = true;
-			std::cout << "Remove D" << std::endl;
-		}
-		if (GetAsyncKeyState(0x57) < 0) // W-key
-		{
-			mc.remove(buttonW);
-			removing = false;
-			macroCommands = true;
-			std::cout << "Remove W" << std::endl;
-		}
-
-		if (GetAsyncKeyState(0x26) < 0) // Up-key
-		{
-			mc.remove(buttonUp);
-			removing = false;
-			macroCommands = true;
-			std::cout << "Remove UP" << std::endl;
-		}
-		if (GetAsyncKeyState(0x28) < 0) // Down-key
-		{
-			mc.remove(buttonDown);
-			removing = false;
-			macroCommands = true;
-			std::cout << "Remove DOWN" << std::endl;
-		}
-		if (GetAsyncKeyState(0x25) < 0) // Left-key
-		{
-			mc.remove(buttonLeft);
-			removing = false;
-			macroCommands = true;
-			std::cout << "Remove LEFT" << std::endl;
-		}
-		if (GetAsyncKeyState(0x27) < 0) // Right-key
-		{
-			mc.remove(buttonRight);
-			removing = false;
-			macroCommands = true;
-			std::cout << "Remove RIGHT" << std::endl;
-		}
-		if (GetAsyncKeyState(0x20) < 0) // Space-key
-		{
-			mc.remove(buttonSpace);
-			removing = false;
-			macroCommands = true;
-			std::cout << "Remove SPACE" << std::endl;
+			if (GetAsyncKeyState(keys[r]) < 0)
+			{
+				mc->remove(defaultButtons[r]);
+				menu = ENTER_MACROS;
+				std::cout << "Remove " << keyNames[r] << std::endl;
+			}
 		}
 	}
 	void handleInput()
@@ -541,37 +312,48 @@ public:
 		
 		if (_kbhit() != 1)
 		{
-			if (waiting)
-			{
+			switch (menu) {
+			case WAITING:
 				Waiting();
-			}
-			if (macroCommands)
-			{
+				break;
+			case ENTER_MACROS:
 				MacroCommands();
-			}
-			if (remapping)
-			{
-				Remapping();
-			}
-			if (mapping)
-			{
-				Mapping();
+				break;
+			case REMOVING:
+				Remove();
+				break;
+			case MAP_MACROS:
+				MapMacros();
+				break;
 			}
 		}
 		_getch();
 	}
 
 private:
+	///// Can be changed into macro commands /////
 	Command* buttonW = new WCommand();
 	Command* buttonA = new ACommand();
 	Command* buttonS = new SCommand();
 	Command* buttonD = new DCommand();
-
 	Command* buttonUp = new UPCommand();
 	Command* buttonDown = new DOWNCommand();
 	Command* buttonLeft = new LEFTCommand();
 	Command* buttonRight = new RIGHTCommand();
-
 	Command* buttonSpace = new SPACECommand();
+
+	////// Will not change into macro commands /////
+	Command* defaultButtonW = new WCommand();
+	Command* defaultButtonA = new ACommand();
+	Command* defaultButtonS = new SCommand();
+	Command* defaultButtonD = new DCommand();
+	Command* defaultButtonUp = new UPCommand();
+	Command* defaultButtonDown = new DOWNCommand();
+	Command* defaultButtonLeft = new LEFTCommand();
+	Command* defaultButtonRight = new RIGHTCommand();
+	Command* defaultButtonSpace = new SPACECommand();
+
+	enum Menu { WAITING, ENTER_MACROS, REMOVING, MAP_MACROS };
+	Menu menu = WAITING;
 
 };
